@@ -228,7 +228,7 @@ export default function BookingForm() {
               <p className="text-gray-500 text-sm mt-1">When should we come by?</p>
             </div>
 
-            <div className="flex justify-center bg-gray-50 p-6 rounded-3xl border border-gray-100">
+            <div className="flex justify-center bg-gray-50 p-3 sm:p-6 rounded-3xl border border-gray-100 overflow-hidden">
               <DayPicker
                 mode="single"
                 selected={data.date}
@@ -237,20 +237,23 @@ export default function BookingForm() {
                   { before: new Date() },
                   { dayOfWeek: [0] } // 0 is Sunday
                 ]}
-                className="p-0 !font-sans"
-                modifiersStyles={{
-                  selected: { 
-                    backgroundColor: 'black', 
-                    color: 'white', 
-                    borderRadius: '100%' 
-                  }
-                }}
-                styles={{
-                  head_cell: { color: '#9CA3AF', fontWeight: 500, fontSize: '0.875rem' },
-                  cell: { fontSize: '0.9rem', padding: '0.5rem' },
-                  day: { borderRadius: '100%', width: '2.5rem', height: '2.5rem' },
-                  nav_button: { color: 'black' },
-                  caption: { color: 'black', fontWeight: 'bold' }
+                className="!font-sans m-0 w-full max-w-[350px]"
+                classNames={{
+                  caption: "flex justify-center py-2 mb-4 relative items-center font-bold text-black",
+                  caption_label: "text-sm font-bold",
+                  nav: "flex items-center",
+                  nav_button: "h-7 w-7 bg-transparent p-0 text-black hover:bg-gray-100 rounded-full flex items-center justify-center transition-colors",
+                  nav_button_previous: "absolute left-1",
+                  nav_button_next: "absolute right-1",
+                  table: "w-full border-collapse",
+                  head_row: "flex justify-between mb-2",
+                  head_cell: "text-gray-400 font-medium text-xs w-8 sm:w-10",
+                  row: "flex w-full mt-2 justify-between",
+                  cell: "text-center p-0 relative",
+                  day: "h-8 w-8 sm:h-10 sm:w-10 p-0 font-normal text-sm rounded-full hover:bg-gray-100 transition-colors",
+                  day_selected: "bg-black text-white hover:bg-gray-800",
+                  day_today: "bg-gray-50 font-bold",
+                  day_disabled: "text-gray-300 opacity-50 cursor-not-allowed hover:bg-transparent",
                 }}
               />
             </div>
