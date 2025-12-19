@@ -228,7 +228,7 @@ export default function BookingForm() {
               <p className="text-gray-500 text-sm mt-1">When should we come by?</p>
             </div>
 
-            <div className="flex justify-center bg-gray-50 p-3 sm:p-6 rounded-3xl border border-gray-100 overflow-hidden">
+            <div className="flex justify-center bg-gray-50 p-2 sm:p-6 rounded-3xl border border-gray-100 overflow-hidden">
               <DayPicker
                 mode="single"
                 selected={data.date}
@@ -237,23 +237,28 @@ export default function BookingForm() {
                   { before: new Date() },
                   { dayOfWeek: [0] } // 0 is Sunday
                 ]}
-                className="!font-sans m-0 w-full max-w-[350px]"
+                className="!font-sans m-0 w-full"
                 classNames={{
-                  caption: "flex justify-center py-2 mb-4 relative items-center font-bold text-black",
+                  months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                  month: "space-y-4",
+                  caption: "flex justify-center pt-1 relative items-center",
                   caption_label: "text-sm font-bold",
-                  nav: "flex items-center",
-                  nav_button: "h-7 w-7 bg-transparent p-0 text-black hover:bg-gray-100 rounded-full flex items-center justify-center transition-colors",
+                  nav: "space-x-1 flex items-center",
+                  nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 transition-opacity",
                   nav_button_previous: "absolute left-1",
                   nav_button_next: "absolute right-1",
-                  table: "w-full border-collapse",
-                  head_row: "flex justify-between mb-2",
-                  head_cell: "text-gray-400 font-medium text-xs w-8 sm:w-10",
-                  row: "flex w-full mt-2 justify-between",
-                  cell: "text-center p-0 relative",
-                  day: "h-8 w-8 sm:h-10 sm:w-10 p-0 font-normal text-sm rounded-full hover:bg-gray-100 transition-colors",
-                  day_selected: "bg-black text-white hover:bg-gray-800",
-                  day_today: "bg-gray-50 font-bold",
-                  day_disabled: "text-gray-300 opacity-50 cursor-not-allowed hover:bg-transparent",
+                  table: "w-full border-collapse space-y-1",
+                  head_row: "flex",
+                  head_cell: "text-gray-500 rounded-md w-9 font-normal text-[0.8rem]",
+                  row: "flex w-full mt-2",
+                  cell: "text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                  day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-gray-100 rounded-full transition-colors",
+                  day_selected: "bg-black text-white hover:bg-gray-800 hover:text-white focus:bg-black focus:text-white",
+                  day_today: "bg-gray-100 text-accent-foreground",
+                  day_outside: "text-gray-300 opacity-50",
+                  day_disabled: "text-gray-300 opacity-50",
+                  day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+                  day_hidden: "invisible",
                 }}
               />
             </div>

@@ -302,37 +302,47 @@ export default function AdminDashboard() {
                 {/* Calendar */}
                 <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-gray-100/50">
                   <h3 className="font-bold text-xl mb-6">Calendar</h3>
-                  <div className="flex justify-center">
+                  <div className="flex justify-center overflow-hidden">
                     <DayPicker
                       mode="single"
                       selected={selectedDate}
                       onSelect={setSelectedDate}
-                      className="mx-auto !font-sans"
+                      className="!font-sans m-0 w-full"
                       modifiers={{
                         booked: bookings
-                          .filter(b => !selectedDate || !isSameDay(b.date, selectedDate)) // Don't mark selected date as 'booked' to avoid style conflict
+                          .filter(b => !selectedDate || !isSameDay(b.date, selectedDate))
                           .map(b => b.date)
+                      }}
+                      classNames={{
+                        months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                        month: "space-y-4",
+                        caption: "flex justify-center pt-1 relative items-center",
+                        caption_label: "text-sm font-bold",
+                        nav: "space-x-1 flex items-center",
+                        nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 transition-opacity",
+                        nav_button_previous: "absolute left-1",
+                        nav_button_next: "absolute right-1",
+                        table: "w-full border-collapse space-y-1",
+                        head_row: "flex",
+                        head_cell: "text-gray-500 rounded-md w-9 font-normal text-[0.8rem]",
+                        row: "flex w-full mt-2",
+                        cell: "text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                        day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-gray-100 rounded-full transition-colors",
+                        day_selected: "bg-black text-white hover:bg-gray-800 hover:text-white focus:bg-black focus:text-white",
+                        day_today: "bg-gray-100 text-accent-foreground",
+                        day_outside: "text-gray-300 opacity-50",
+                        day_disabled: "text-gray-300 opacity-50",
+                        day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+                        day_hidden: "invisible",
                       }}
                       modifiersStyles={{
                         booked: { 
                           fontWeight: 'bold', 
                           color: 'black',
-                          textDecoration: 'none',
-                          borderBottom: '2px solid black'
-                        },
-                        selected: {
-                          backgroundColor: 'black',
-                          color: 'white',
-                          borderRadius: '100%',
-                          borderBottom: 'none'
+                          textDecoration: 'underline',
+                          textDecorationColor: 'black',
+                          textUnderlineOffset: '4px'
                         }
-                      }}
-                      styles={{
-                        head_cell: { color: '#9CA3AF', fontWeight: 500, fontSize: '0.875rem' },
-                        cell: { fontSize: '0.9rem', padding: '0.5rem' },
-                        day: { borderRadius: '100%', width: '2.5rem', height: '2.5rem' },
-                        nav_button: { color: 'black' },
-                        caption: { color: 'black', fontWeight: 'bold' }
                       }}
                     />
                   </div>
@@ -497,13 +507,30 @@ export default function AdminDashboard() {
                   { before: new Date() },
                   { dayOfWeek: [0] } // 0 is Sunday
                 ]}
-                className="!font-sans"
-                modifiersStyles={{
-                  selected: { 
-                    backgroundColor: 'black', 
-                    color: 'white', 
-                    borderRadius: '100%' 
-                  }
+                showOutsideDays
+                className="p-3"
+                classNames={{
+                  months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                  month: "space-y-4",
+                  caption: "flex justify-center pt-1 relative items-center",
+                  caption_label: "text-sm font-medium",
+                  nav: "space-x-1 flex items-center",
+                  nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 transition-opacity",
+                  nav_button_previous: "absolute left-1",
+                  nav_button_next: "absolute right-1",
+                  table: "w-full border-collapse space-y-1",
+                  head_row: "flex",
+                  head_cell: "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
+                  row: "flex w-full mt-2",
+                  cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-accent/50 [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                  day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-gray-100 rounded-full transition-colors",
+                  day_range_end: "day-range-end",
+                  day_selected: "bg-black text-white hover:bg-black hover:text-white focus:bg-black focus:text-white",
+                  day_today: "bg-gray-100 text-accent-foreground",
+                  day_outside: "day-outside text-muted-foreground opacity-50 aria-selected:bg-accent/50 aria-selected:text-muted-foreground aria-selected:opacity-30",
+                  day_disabled: "text-muted-foreground opacity-50",
+                  day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+                  day_hidden: "invisible",
                 }}
               />
             </div>
