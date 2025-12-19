@@ -20,7 +20,7 @@ export default function AdminLogin() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8FAFC] font-sans p-4">
+    <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-[#F8FAFC] font-sans p-4">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-xl shadow-black/5 border border-gray-100 p-8 md:p-10">
         <div className="flex flex-col items-center mb-8">
           <img src={logo} alt="One X" className="h-16 object-contain mb-4" />

@@ -54,7 +54,11 @@
     /* @apply border-border; */
     border-color: hsl(var(--border));
   }
-  body {
+  html, body {
     @apply bg-background text-foreground;
+    overflow-x: hidden; /* Prevent horizontal scroll */
+    overscroll-behavior: none; /* Prevent bounce effect on mobile */
+    width: 100%;
+    position: relative;
   }
 }
