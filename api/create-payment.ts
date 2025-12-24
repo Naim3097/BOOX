@@ -101,8 +101,11 @@ export default async function handler(
     const callbackUrl = `${baseUrl}/api/payment-webhook`;
 
     // Prepare request body for Lean.x API
+    // Try sending UUID exactly as is, but ensure no hidden chars
+    const cleanUuid = collectionUuid.replace(/[^a-zA-Z0-9-]/g, '');
+    
     const leanxPayload = {
-      collection_uuid: collectionUuid,
+      collection_uuid: cleanUuid,
       amount: parseFloat(amount.toFixed(2)),
       invoice_ref: invoiceRef,
       redirect_url: redirectUrl,
@@ -112,11 +115,7 @@ export default async function handler(
       phone_number: customerPhone.replace(/[\s-]/g, ''), // Remove spaces and dashes
     };
 
-    console.log('Creating payment for:', {
-      invoice: invoiceRef,
-      amount: leanxPayload.amount,
-      customer: customerName,
-    });
+    console.log('Sending payload to Lean.x:', JSON.stringify(leanxPayload, null, 2));
 
     const apiResponse = await fetch('https://api.leanx.dev/api/v1/merchant/create-bill-page', {
       method: 'POST',
