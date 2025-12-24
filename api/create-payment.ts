@@ -111,11 +111,8 @@ export default async function handler(
     const callbackUrl = `${baseUrl}/api/payment-webhook`;
 
     // Prepare request body for Lean.x API
-    // Use the UUID exactly as provided in the environment variable
-    const cleanUuid = collectionUuid;
-    
     const leanxPayload = {
-      collection_uuid: cleanUuid,
+      collection_uuid: collectionUuid,
       amount: parseFloat(amount.toFixed(2)),
       invoice_ref: invoiceRef,
       redirect_url: redirectUrl,
@@ -125,79 +122,53 @@ export default async function handler(
       phone_number: customerPhone.replace(/[\s-]/g, ''), // Remove spaces and dashes
     };
 
-    // Prepare candidate UUIDs to try (Brute-force strategy to resolve INVALID_UUID)
-    const parts = authToken?.split('|') || [];
-    const candidates = [
-        { name: 'EnvVar (Exact)', value: collectionUuid },
-        { name: 'EnvVar (UpperCase)', value: collectionUuid.toUpperCase() },
-        // Try the standard UUID from the auth token (middle part)
-        { name: 'AuthToken (Standard UUID)', value: parts[1] },
-        // Try the prefix from the auth token (first part) - unlikely but worth a shot
-        { name: 'AuthToken (Prefix)', value: parts[0] }
-    ].filter(c => c.value); // Remove nulls
+    console.log('Sending payload to Lean.x:', JSON.stringify(leanxPayload, null, 2));
 
-    let lastErrorResponse = null;
-    let successResponse = null;
+    const apiResponse = await fetch('https://api.leanx.dev/api/v1/merchant/create-bill-page', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'auth-token': authToken
+      },
+      body: JSON.stringify(leanxPayload)
+    });
 
-    // Loop through candidates
-    for (const candidate of candidates) {
-        console.log(`Attempting payment with UUID candidate: ${candidate.name} = ${candidate.value}`);
-        
-        const payload = {
-            ...leanxPayload,
-            collection_uuid: candidate.value
-        };
+    const data: LeanXBillResponse = await apiResponse.json();
 
-        try {
-            const apiResponse = await fetch('https://api.leanx.dev/api/v1/merchant/create-bill-page', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'auth-token': authToken
-                },
-                body: JSON.stringify(payload)
-            });
-
-            const data: LeanXBillResponse = await apiResponse.json();
-
-            if (apiResponse.ok && data.response_code === 2000) {
-                console.log(`SUCCESS! Payment created with UUID: ${candidate.name}`);
-                successResponse = data;
-                break; // Stop trying, we found the right one
-            } else {
-                console.warn(`Failed with ${candidate.name}:`, data.breakdown_errors || data.description);
-                lastErrorResponse = data;
-            }
-        } catch (err) {
-            console.error(`Network error with ${candidate.name}:`, err);
-        }
-    }
-
-    if (successResponse) {
-        console.log('Payment created successfully:', {
-            billNo: successResponse.data.bill_no,
-            invoiceRef: successResponse.data.invoice_ref
-        });
-
-        return response.status(200).json({
-            success: true,
-            redirectUrl: successResponse.data.redirect_url,
-            billNo: successResponse.data.bill_no,
-            invoiceRef: successResponse.data.invoice_ref,
-        });
-    }
-
-    // If we get here, all attempts failed
-    console.error('All UUID candidates failed. Last error:', lastErrorResponse);
-    return response.status(500).json({
+    if (!apiResponse.ok) {
+      console.error('Lean.x API Error:', data);
+      return response.status(apiResponse.status).json({
         error: 'Payment gateway error',
-        message: lastErrorResponse?.description || 'Failed to create payment',
-        details: lastErrorResponse?.breakdown_errors,
+        details: data
+      });
+    }
+
+    // Check if Lean.x returned success
+    if (data.response_code !== 2000) {
+      console.error('Lean.x error response:', data);
+      return response.status(500).json({
+        error: 'Payment gateway error',
+        message: data.description,
+        details: data.breakdown_errors,
         debug: {
-            triedCandidates: candidates.map(c => c.name),
-            lastResponse: lastErrorResponse,
+            sentPayload: leanxPayload,
+            response: data,
             uuidIntegrity: uuidDebug
         }
+      });
+    }
+
+    console.log('Payment created successfully:', {
+      billNo: data.data.bill_no,
+      invoiceRef: data.data.invoice_ref
+    });
+
+    // Return the redirect URL to the frontend
+    return response.status(200).json({
+      success: true,
+      redirectUrl: data.data.redirect_url,
+      billNo: data.data.bill_no,
+      invoiceRef: data.data.invoice_ref,
     });
 
   } catch (error) {
