@@ -84,16 +84,31 @@ export default async function handler(
 
     // Get Lean.x credentials from environment variables
     const authToken = process.env.LEANX_AUTH_TOKEN?.trim();
-    // We will try to extract the UUID from the auth token first, as it's the most reliable source of the real UUID
-    // Auth token format: PREFIX|UUID|HASH
-    const authTokenParts = authToken?.split('|');
-    const extractedUuid = authTokenParts && authTokenParts.length >= 2 ? authTokenParts[1] : null;
+    
+    // Debug Auth Token Structure
+    const parts = authToken?.split('|') || [];
+    console.log('Auth Token Analysis:', {
+        totalLength: authToken?.length,
+        numberOfParts: parts.length,
+        part1Length: parts[1]?.length,
+        part1Value: parts[1] // This should be the UUID
+    });
+
+    const extractedUuid = parts.length >= 2 ? parts[1] : null;
     
     // Fallback to the env var if extraction fails
     const envCollectionUuid = process.env.LEANX_COLLECTION_UUID?.trim();
     
-    // DECISION: Use the extracted UUID if it looks like a valid UUID (36 chars), otherwise use the env var
-    const finalCollectionUuid = (extractedUuid && extractedUuid.length === 36) ? extractedUuid : envCollectionUuid;
+    // DECISION LOGIC:
+    // 1. If we extracted a 36-char UUID from the token, use it.
+    // 2. Otherwise, use the environment variable.
+    let finalCollectionUuid = envCollectionUuid;
+    let source = 'EnvVar';
+
+    if (extractedUuid && extractedUuid.length === 36) {
+        finalCollectionUuid = extractedUuid;
+        source = 'AuthToken (Auto-Extracted)';
+    }
 
     if (!authToken || !finalCollectionUuid) {
       console.error('Missing Lean.x credentials');
@@ -125,7 +140,7 @@ export default async function handler(
     };
 
     console.log('Sending payload to Lean.x:', JSON.stringify(leanxPayload, null, 2));
-    console.log(`UUID Debug: Source=${cleanUuid === extractedUuid ? 'AuthToken' : 'EnvVar'}, Value=${cleanUuid}`);
+    console.log(`UUID Debug: Source=${source}, Value=${cleanUuid}`);
 
     const apiResponse = await fetch('https://api.leanx.dev/api/v1/merchant/create-bill-page', {
       method: 'POST',
@@ -157,7 +172,11 @@ export default async function handler(
             sentPayload: leanxPayload,
             sentAuthTokenPrefix: authToken.substring(0, 5) + '...',
             response: data,
-            uuidSource: cleanUuid === extractedUuid ? 'AuthToken' : 'EnvVar'
+            uuidSource: source,
+            authTokenAnalysis: {
+                parts: parts.length,
+                extractedUuid: extractedUuid
+            }
         }
       });
     }
