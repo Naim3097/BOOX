@@ -319,8 +319,10 @@ export default function BookingForm() {
 
             <div className="flex flex-col gap-3 mt-6">
               {error && (
-                <div className="p-4 bg-red-50 text-red-600 text-sm rounded-2xl border border-red-100">
+                <div className="p-4 bg-red-50 text-red-600 text-sm rounded-2xl border border-red-100 break-words">
+                  <p className="font-bold mb-1">Payment Error:</p>
                   {error}
+                  <p className="text-xs mt-2 text-gray-500">Check console for full details.</p>
                 </div>
               )}
               <div className="flex gap-3">

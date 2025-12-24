@@ -156,7 +156,8 @@ export default async function handler(
         debug: {
             sentPayload: leanxPayload,
             sentAuthTokenPrefix: authToken.substring(0, 5) + '...',
-            response: data
+            response: data,
+            uuidSource: cleanUuid === extractedUuid ? 'AuthToken' : 'EnvVar'
         }
       });
     }
