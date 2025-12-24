@@ -101,8 +101,8 @@ export default async function handler(
     const callbackUrl = `${baseUrl}/api/payment-webhook`;
 
     // Prepare request body for Lean.x API
-    // Try sending UUID exactly as is, but ensure no hidden chars
-    const cleanUuid = collectionUuid.replace(/[^a-zA-Z0-9-]/g, '');
+    // Force uppercase as per docs example (DP-1F6762F9E4-LX) and remove hidden chars
+    const cleanUuid = collectionUuid.trim().toUpperCase().replace(/[^a-zA-Z0-9-]/g, '');
     
     const leanxPayload = {
       collection_uuid: cleanUuid,
@@ -116,7 +116,7 @@ export default async function handler(
     };
 
     console.log('Sending payload to Lean.x:', JSON.stringify(leanxPayload, null, 2));
-    console.log(`UUID Debug: Length=${cleanUuid.length}, Value=${cleanUuid}`);
+    console.log(`UUID Debug: Original=${collectionUuid}, Cleaned=${cleanUuid}`);
 
     const apiResponse = await fetch('https://api.leanx.dev/api/v1/merchant/create-bill-page', {
       method: 'POST',
@@ -144,7 +144,11 @@ export default async function handler(
         error: 'Payment gateway error',
         message: data.description,
         details: data.breakdown_errors,
-        fullResponse: data // Include full response for debugging
+        debug: {
+            sentPayload: leanxPayload,
+            sentAuthTokenPrefix: authToken.substring(0, 5) + '...',
+            response: data
+        }
       });
     }
 
