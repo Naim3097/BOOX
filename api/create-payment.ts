@@ -126,6 +126,7 @@ export default async function handler(
     };
 
     // Prepare candidate UUIDs to try (Brute-force strategy to resolve INVALID_UUID)
+    const parts = authToken?.split('|') || [];
     const candidates = [
         { name: 'EnvVar (Exact)', value: collectionUuid },
         { name: 'EnvVar (UpperCase)', value: collectionUuid.toUpperCase() },
