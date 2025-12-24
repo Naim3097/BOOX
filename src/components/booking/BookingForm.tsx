@@ -10,6 +10,7 @@ import { db } from '../../lib/firebase';
 
 type BookingData = {
   name: string;
+  email: string;
   phone: string;
   address: string;
   vehicleBrand: string;
@@ -34,6 +35,7 @@ export default function BookingForm() {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<BookingData>({
     name: '',
+    email: '',
     phone: '',
     address: '',
     vehicleBrand: '',
@@ -58,18 +60,57 @@ export default function BookingForm() {
     setLoading(true);
     setError(null);
     try {
-      await addDoc(collection(db, "bookings"), {
+      // 1. Save booking to Firestore first with pending_payment status
+      const docRef = await addDoc(collection(db, "bookings"), {
         ...data,
-        status: 'pending',
+        status: 'pending_payment',
+        paymentStatus: 'pending',
         createdAt: new Date(),
         date: data.date // Firestore handles Date objects correctly
       });
-      console.log('Booking submitted:', data);
-      nextStep(); // Go to success step
+      
+      console.log('Booking created with ID:', docRef.id);
+
+      // 2. Call our backend API to create Lean.x payment session
+      const response = await fetch('/api/create-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: 5.00, // Updated to RM5.00
+          invoiceRef: `BOOKING-${docRef.id}`,
+          customerName: data.name,
+          customerEmail: data.email || 'guest@onexbooking.com', // Use dummy email if not provided
+          customerPhone: data.phone,
+        }),
+      });
+
+      // Check content type to avoid JSON parse errors
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+        console.error("API Error (Non-JSON response):", text);
+        throw new Error("Payment API is not available. If you are testing locally, please use 'vercel dev' instead of 'npm run dev'.");
+      }
+
+      const paymentData = await response.json();
+
+      if (!response.ok) {
+        throw new Error(paymentData.error || 'Failed to initialize payment');
+      }
+
+      if (paymentData.success && paymentData.redirectUrl) {
+        // 3. Redirect user to Lean.x payment page
+        console.log('Redirecting to payment page...');
+        window.location.href = paymentData.redirectUrl;
+      } else {
+        throw new Error('Invalid response from payment gateway');
+      }
+
     } catch (error: any) {
-      console.error("Error adding document: ", error);
-      setError(error.message || "There was an error submitting your booking. Please try again.");
-    } finally {
+      console.error("Error processing booking:", error);
+      setError(error.message || "Failed to process your booking. Please try again.");
       setLoading(false);
     }
   };
@@ -77,8 +118,8 @@ export default function BookingForm() {
   return (
     <div className="w-full max-w-lg mx-auto font-sans">
       <div className="mb-10 flex justify-between items-center px-4">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="flex flex-col items-center relative">
+        {[1, 2].map((i) => (
+          <div key={i} className="flex flex-col items-center relative w-1/2">
             <div className={cn(
               "w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 z-10",
               step >= i 
@@ -87,17 +128,17 @@ export default function BookingForm() {
             )}>
               {i}
             </div>
-            {i < 4 && (
+            {i < 2 && (
               <div className={cn(
-                "absolute top-5 left-10 w-[calc(100%+2rem)] h-0.5 -z-0 transition-colors duration-500",
+                "absolute top-5 left-[50%] w-full h-0.5 -z-0 transition-colors duration-500",
                 step > i ? "bg-black" : "bg-gray-100"
               )} />
             )}
             <span className={cn(
-              "text-xs mt-2 font-medium transition-colors duration-300 hidden sm:block",
+              "text-xs mt-2 font-medium transition-colors duration-300",
               step >= i ? "text-black" : "text-gray-400"
             )}>
-              {i === 1 ? 'Details' : i === 2 ? 'Vehicle' : i === 3 ? 'Time' : 'Confirm'}
+              {i === 1 ? 'Details & Time' : 'Review & Pay'}
             </span>
           </div>
         ))}
@@ -113,8 +154,8 @@ export default function BookingForm() {
             className="space-y-6"
           >
             <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Your Details</h2>
-              <p className="text-gray-500 text-sm mt-1">Let's start with your contact information</p>
+              <h2 className="text-2xl font-bold text-gray-900">Booking Details</h2>
+              <p className="text-gray-500 text-sm mt-1">Please fill in your information</p>
             </div>
             
             <div className="space-y-4">
@@ -131,73 +172,17 @@ export default function BookingForm() {
                 className="rounded-full px-6 py-6 bg-gray-50 border-gray-100 focus:bg-white transition-all"
               />
               <Input 
-                placeholder="Home Address" 
+                placeholder="Lokasi / City" 
                 value={data.address} 
                 onChange={e => updateData({ address: e.target.value })} 
                 className="rounded-full px-6 py-6 bg-gray-50 border-gray-100 focus:bg-white transition-all"
               />
-            </div>
-            
-            <Button 
-              className="w-full mt-6 rounded-full py-6 text-lg font-medium bg-black hover:bg-gray-800 shadow-lg shadow-black/10" 
-              onClick={nextStep} 
-              disabled={!data.name || !data.phone || !data.address}
-            >
-              Next: Vehicle Details
-            </Button>
-          </motion.div>
-        )}
-
-        {step === 2 && (
-          <motion.div
-            key="step2"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
-          >
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Vehicle Details</h2>
-              <p className="text-gray-500 text-sm mt-1">Tell us about your car</p>
-            </div>
-
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <Input 
-                  placeholder="Brand" 
-                  value={data.vehicleBrand} 
-                  onChange={e => updateData({ vehicleBrand: e.target.value })} 
-                  className="rounded-full px-6 py-6 bg-gray-50 border-gray-100 focus:bg-white transition-all"
-                />
-                <Input 
-                  placeholder="Model" 
-                  value={data.vehicleModel} 
-                  onChange={e => updateData({ vehicleModel: e.target.value })} 
-                  className="rounded-full px-6 py-6 bg-gray-50 border-gray-100 focus:bg-white transition-all"
-                />
-              </div>
               <Input 
-                placeholder="Year" 
-                type="number"
-                value={data.vehicleYear} 
-                onChange={e => updateData({ vehicleYear: e.target.value })} 
+                placeholder="Model Kereta" 
+                value={data.vehicleModel} 
+                onChange={e => updateData({ vehicleModel: e.target.value })} 
                 className="rounded-full px-6 py-6 bg-gray-50 border-gray-100 focus:bg-white transition-all"
               />
-              <div className="relative">
-                <select 
-                  className="flex w-full rounded-full border border-gray-100 bg-gray-50 px-6 py-4 text-sm focus:bg-white focus:ring-2 focus:ring-black/5 focus:border-black outline-none appearance-none transition-all"
-                  value={data.transmissionType}
-                  onChange={e => updateData({ transmissionType: e.target.value })}
-                >
-                  <option value="Automatic">Automatic Transmission</option>
-                  <option value="Manual">Manual Transmission</option>
-                  <option value="CVT">CVT</option>
-                  <option value="DCT">DCT</option>
-                </select>
-                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                  ▼
-                </div>
-              </div>
               <textarea 
                 className="flex min-h-[100px] w-full rounded-3xl border border-gray-100 bg-gray-50 px-6 py-4 text-sm focus:bg-white focus:ring-2 focus:ring-black/5 focus:border-black outline-none transition-all resize-none"
                 placeholder="Describe the problem..."
@@ -206,98 +191,80 @@ export default function BookingForm() {
               />
             </div>
 
-            <div className="flex gap-3 mt-6">
-              <Button variant="outline" onClick={prevStep} className="w-1/3 rounded-full py-6 border-gray-200 hover:bg-gray-50">Back</Button>
-              <Button className="w-2/3 rounded-full py-6 bg-black hover:bg-gray-800 shadow-lg shadow-black/10" onClick={nextStep} disabled={!data.vehicleBrand || !data.vehicleModel}>
-                Next: Select Time
-              </Button>
-            </div>
-          </motion.div>
-        )}
-
-        {step === 3 && (
-          <motion.div
-            key="step3"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
-          >
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Select a Time</h2>
-              <p className="text-gray-500 text-sm mt-1">When should we come by?</p>
-            </div>
-
-            <div className="flex justify-center bg-gray-50 p-2 sm:p-6 rounded-3xl border border-gray-100 overflow-hidden">
-              <DayPicker
-                mode="single"
-                selected={data.date}
-                onSelect={(date) => updateData({ date })}
-                disabled={[
-                  { before: new Date() },
-                  { dayOfWeek: [0] } // 0 is Sunday
-                ]}
-                className="!font-sans m-0 w-full"
-                classNames={{
-                  months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
-                  month: "space-y-4",
-                  caption: "flex justify-center pt-1 relative items-center",
-                  caption_label: "text-sm font-bold",
-                  nav: "space-x-1 flex items-center",
-                  nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 transition-opacity",
-                  nav_button_previous: "absolute left-1",
-                  nav_button_next: "absolute right-1",
-                  table: "w-full border-collapse space-y-1",
-                  head_row: "flex",
-                  head_cell: "text-gray-500 rounded-md w-9 font-normal text-[0.8rem]",
-                  row: "flex w-full mt-2",
-                  cell: "text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
-                  day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-gray-100 rounded-full transition-colors",
-                  day_selected: "bg-black text-white hover:bg-gray-800 hover:text-white focus:bg-black focus:text-white",
-                  day_today: "bg-gray-100 text-accent-foreground",
-                  day_outside: "text-gray-300 opacity-50",
-                  day_disabled: "text-gray-300 opacity-50",
-                  day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
-                  day_hidden: "invisible",
-                }}
-              />
+            <div className="pt-4">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">Select Date & Time</h3>
+              <div className="flex justify-center bg-gray-50 p-2 sm:p-6 rounded-3xl border border-gray-100 overflow-hidden mb-4">
+                <DayPicker
+                  mode="single"
+                  selected={data.date}
+                  onSelect={(date) => updateData({ date })}
+                  disabled={[
+                    { before: new Date() },
+                    { dayOfWeek: [0] } // 0 is Sunday
+                  ]}
+                  className="!font-sans m-0 w-full"
+                  classNames={{
+                    months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                    month: "space-y-4",
+                    caption: "flex justify-center pt-1 relative items-center",
+                    caption_label: "text-sm font-bold",
+                    nav: "space-x-1 flex items-center",
+                    nav_button: "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 transition-opacity",
+                    nav_button_previous: "absolute left-1",
+                    nav_button_next: "absolute right-1",
+                    table: "w-full border-collapse space-y-1",
+                    head_row: "flex",
+                    head_cell: "text-gray-500 rounded-md w-9 font-normal text-[0.8rem]",
+                    row: "flex w-full mt-2",
+                    cell: "text-center text-sm p-0 relative [&:has([aria-selected])]:bg-accent first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
+                    day: "h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-gray-100 rounded-full transition-colors",
+                    day_selected: "bg-black text-white hover:bg-gray-800 hover:text-white focus:bg-black focus:text-white",
+                    day_today: "bg-gray-100 text-accent-foreground",
+                    day_outside: "text-gray-300 opacity-50",
+                    day_disabled: "text-gray-300 opacity-50",
+                    day_range_middle: "aria-selected:bg-accent aria-selected:text-accent-foreground",
+                    day_hidden: "invisible",
+                  }}
+                />
+              </div>
+              
+              {data.date && (
+                <div className="grid grid-cols-1 gap-3 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  {TIME_SLOTS.map(slot => (
+                    <button
+                      key={slot}
+                      onClick={() => updateData({ timeSlot: slot })}
+                      className={cn(
+                        "p-4 rounded-2xl border text-sm font-medium transition-all duration-200 flex justify-between items-center group",
+                        data.timeSlot === slot 
+                          ? "bg-black text-white border-black shadow-lg shadow-black/20" 
+                          : "bg-white hover:bg-gray-50 border-gray-100 text-gray-600"
+                      )}
+                    >
+                      <span>{slot}</span>
+                      <div className={cn(
+                        "w-4 h-4 rounded-full border-2 transition-colors",
+                        data.timeSlot === slot ? "border-white bg-white" : "border-gray-300 group-hover:border-gray-400"
+                      )} />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             
-            {data.date && (
-              <div className="grid grid-cols-1 gap-3 mt-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                {TIME_SLOTS.map(slot => (
-                  <button
-                    key={slot}
-                    onClick={() => updateData({ timeSlot: slot })}
-                    className={cn(
-                      "p-4 rounded-2xl border text-sm font-medium transition-all duration-200 flex justify-between items-center group",
-                      data.timeSlot === slot 
-                        ? "bg-black text-white border-black shadow-lg shadow-black/20" 
-                        : "bg-white hover:bg-gray-50 border-gray-100 text-gray-600"
-                    )}
-                  >
-                    <span>{slot}</span>
-                    <div className={cn(
-                      "w-4 h-4 rounded-full border-2 transition-colors",
-                      data.timeSlot === slot ? "border-white bg-white" : "border-gray-300 group-hover:border-gray-400"
-                    )} />
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div className="flex gap-3 mt-6">
-              <Button variant="outline" onClick={prevStep} className="w-1/3 rounded-full py-6 border-gray-200 hover:bg-gray-50">Back</Button>
-              <Button className="w-2/3 rounded-full py-6 bg-black hover:bg-gray-800 shadow-lg shadow-black/10" onClick={nextStep} disabled={!data.date || !data.timeSlot}>
-                Review Booking
-              </Button>
-            </div>
+            <Button 
+              className="w-full mt-6 rounded-full py-6 text-lg font-medium bg-black hover:bg-gray-800 shadow-lg shadow-black/10" 
+              onClick={nextStep} 
+              disabled={!data.name || !data.phone || !data.address || !data.vehicleModel || !data.date || !data.timeSlot}
+            >
+              Review Booking
+            </Button>
           </motion.div>
         )}
 
-        {step === 4 && (
+        {step === 2 && (
           <motion.div
-            key="step4"
+            key="step2"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
@@ -319,13 +286,13 @@ export default function BookingForm() {
               </div>
               <div className="flex justify-between items-center pb-4 border-b border-gray-200">
                 <span className="text-gray-500">Vehicle</span>
-                <span className="font-medium text-gray-900">{data.vehicleYear} {data.vehicleBrand} {data.vehicleModel}</span>
+                <span className="font-medium text-gray-900">{data.vehicleModel}</span>
               </div>
               <div className="flex justify-between items-center pb-4 border-b border-gray-200">
                 <span className="text-gray-500">Date</span>
                 <span className="font-medium text-gray-900">{data.date ? format(data.date, 'PPP') : '-'}</span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center pb-4 border-b border-gray-200">
                 <span className="text-gray-500">Time</span>
                 <span className="font-medium text-gray-900">{data.timeSlot}</span>
               </div>
@@ -333,6 +300,18 @@ export default function BookingForm() {
                 <span className="text-gray-400 text-xs uppercase tracking-wider font-bold block mb-2">Service Location</span>
                 <span className="font-medium text-gray-900 block">{data.address}</span>
               </div>
+              {data.issues && (
+                <div className="pt-2">
+                  <span className="text-gray-400 text-xs uppercase tracking-wider font-bold block mb-1">Problem Description</span>
+                  <p className="text-gray-600 italic">{data.issues}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-yellow-50 p-4 rounded-2xl border border-yellow-100 text-center">
+              <p className="text-yellow-800 font-medium text-sm">
+                To confirm booking need to pay <span className="font-bold text-black">RM 5.00</span>
+              </p>
             </div>
 
             <div className="flex flex-col gap-3 mt-6">
@@ -344,12 +323,13 @@ export default function BookingForm() {
               <div className="flex gap-3">
                 <Button variant="outline" onClick={prevStep} className="w-1/3 rounded-full py-6 border-gray-200 hover:bg-gray-50" disabled={loading}>Back</Button>
                 <Button className="w-2/3 rounded-full py-6 bg-black hover:bg-gray-800 shadow-lg shadow-black/10" onClick={handleSubmit} disabled={loading}>
-                  {loading ? 'Confirming...' : 'Confirm Booking'}
+                  {loading ? 'Processing...' : 'Pay RM 5.00'}
                 </Button>
               </div>
             </div>
           </motion.div>
         )}
+
 
         {step === 5 && (
           <motion.div
