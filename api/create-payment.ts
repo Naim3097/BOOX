@@ -143,7 +143,8 @@ export default async function handler(
       return response.status(500).json({
         error: 'Payment gateway error',
         message: data.description,
-        details: data.breakdown_errors
+        details: data.breakdown_errors,
+        fullResponse: data // Include full response for debugging
       });
     }
 

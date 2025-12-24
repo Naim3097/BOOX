@@ -11,6 +11,13 @@ lerna-debug.log*
 .env
 .env.local
 .env.*.local
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!tsconfig.*.json
+!vercel.json
+!eslint.config.js
 
 node_modules
 dist
