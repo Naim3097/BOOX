@@ -99,7 +99,7 @@ export default function BookingForm() {
       if (!response.ok) {
         // Construct a more detailed error message
         const detailedError = paymentData.message || paymentData.details || paymentData.error || 'Failed to initialize payment';
-        console.error("Payment Gateway Detailed Error:", paymentData);
+        console.error("Payment Gateway Detailed Error:", JSON.stringify(paymentData, null, 2));
         throw new Error(detailedError);
       }
 

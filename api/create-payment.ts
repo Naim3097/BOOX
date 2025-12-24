@@ -83,8 +83,8 @@ export default async function handler(
     }
 
     // Get Lean.x credentials from environment variables
-    const authToken = process.env.LEANX_AUTH_TOKEN;
-    const collectionUuid = process.env.LEANX_COLLECTION_UUID;
+    const authToken = process.env.LEANX_AUTH_TOKEN?.trim();
+    const collectionUuid = process.env.LEANX_COLLECTION_UUID?.trim();
 
     if (!authToken || !collectionUuid) {
       console.error('Missing Lean.x credentials in environment variables');
