@@ -84,10 +84,19 @@ export default async function handler(
 
     // Get Lean.x credentials from environment variables
     const authToken = process.env.LEANX_AUTH_TOKEN?.trim();
-    const collectionUuid = process.env.LEANX_COLLECTION_UUID?.trim();
+    // We will try to extract the UUID from the auth token first, as it's the most reliable source of the real UUID
+    // Auth token format: PREFIX|UUID|HASH
+    const authTokenParts = authToken?.split('|');
+    const extractedUuid = authTokenParts && authTokenParts.length >= 2 ? authTokenParts[1] : null;
+    
+    // Fallback to the env var if extraction fails
+    const envCollectionUuid = process.env.LEANX_COLLECTION_UUID?.trim();
+    
+    // DECISION: Use the extracted UUID if it looks like a valid UUID (36 chars), otherwise use the env var
+    const finalCollectionUuid = (extractedUuid && extractedUuid.length === 36) ? extractedUuid : envCollectionUuid;
 
-    if (!authToken || !collectionUuid) {
-      console.error('Missing Lean.x credentials in environment variables');
+    if (!authToken || !finalCollectionUuid) {
+      console.error('Missing Lean.x credentials');
       return response.status(500).json({
         error: 'Payment gateway not configured. Please contact support.'
       });
@@ -101,8 +110,8 @@ export default async function handler(
     const callbackUrl = `${baseUrl}/api/payment-webhook`;
 
     // Prepare request body for Lean.x API
-    // Force uppercase as per docs example (DP-1F6762F9E4-LX) and remove hidden chars
-    const cleanUuid = collectionUuid.trim().toUpperCase().replace(/[^a-zA-Z0-9-]/g, '');
+    // Use the determined UUID. If it's the short code, we leave it. If it's the standard UUID, we use it.
+    const cleanUuid = finalCollectionUuid;
     
     const leanxPayload = {
       collection_uuid: cleanUuid,
@@ -116,7 +125,7 @@ export default async function handler(
     };
 
     console.log('Sending payload to Lean.x:', JSON.stringify(leanxPayload, null, 2));
-    console.log(`UUID Debug: Original=${collectionUuid}, Cleaned=${cleanUuid}`);
+    console.log(`UUID Debug: Source=${cleanUuid === extractedUuid ? 'AuthToken' : 'EnvVar'}, Value=${cleanUuid}`);
 
     const apiResponse = await fetch('https://api.leanx.dev/api/v1/merchant/create-bill-page', {
       method: 'POST',
