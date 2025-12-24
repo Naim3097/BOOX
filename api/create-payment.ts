@@ -84,38 +84,24 @@ export default async function handler(
 
     // Get Lean.x credentials from environment variables
     const authToken = process.env.LEANX_AUTH_TOKEN?.trim();
-    
-    // Debug Auth Token Structure
-    const parts = authToken?.split('|') || [];
-    console.log('Auth Token Analysis:', {
-        totalLength: authToken?.length,
-        numberOfParts: parts.length,
-        part1Length: parts[1]?.length,
-        part1Value: parts[1] // This should be the UUID
-    });
+    const collectionUuid = process.env.LEANX_COLLECTION_UUID?.trim();
 
-    const extractedUuid = parts.length >= 2 ? parts[1] : null;
-    
-    // Fallback to the env var if extraction fails
-    const envCollectionUuid = process.env.LEANX_COLLECTION_UUID?.trim();
-    
-    // DECISION LOGIC:
-    // 1. If we extracted a 36-char UUID from the token, use it.
-    // 2. Otherwise, use the environment variable.
-    let finalCollectionUuid = envCollectionUuid;
-    let source = 'EnvVar';
-
-    if (extractedUuid && extractedUuid.length === 36) {
-        finalCollectionUuid = extractedUuid;
-        source = 'AuthToken (Auto-Extracted)';
-    }
-
-    if (!authToken || !finalCollectionUuid) {
+    if (!authToken || !collectionUuid) {
       console.error('Missing Lean.x credentials');
       return response.status(500).json({
         error: 'Payment gateway not configured. Please contact support.'
       });
     }
+
+    // Debug: Check for hidden characters in the UUID
+    const uuidDebug = {
+        value: collectionUuid,
+        length: collectionUuid.length,
+        charCodes: collectionUuid.split('').map(c => c.charCodeAt(0))
+    };
+    console.log('UUID Integrity Check:', JSON.stringify(uuidDebug));
+
+    // Construct redirect and callback URLs dynamically
 
     // Construct redirect and callback URLs dynamically
     const protocol = request.headers['x-forwarded-proto'] || 'https';
@@ -125,8 +111,8 @@ export default async function handler(
     const callbackUrl = `${baseUrl}/api/payment-webhook`;
 
     // Prepare request body for Lean.x API
-    // Use the determined UUID. If it's the short code, we leave it. If it's the standard UUID, we use it.
-    const cleanUuid = finalCollectionUuid;
+    // Use the UUID exactly as provided in the environment variable
+    const cleanUuid = collectionUuid;
     
     const leanxPayload = {
       collection_uuid: cleanUuid,
@@ -140,7 +126,6 @@ export default async function handler(
     };
 
     console.log('Sending payload to Lean.x:', JSON.stringify(leanxPayload, null, 2));
-    console.log(`UUID Debug: Source=${source}, Value=${cleanUuid}`);
 
     const apiResponse = await fetch('https://api.leanx.dev/api/v1/merchant/create-bill-page', {
       method: 'POST',
@@ -172,11 +157,7 @@ export default async function handler(
             sentPayload: leanxPayload,
             sentAuthTokenPrefix: authToken.substring(0, 5) + '...',
             response: data,
-            uuidSource: source,
-            authTokenAnalysis: {
-                parts: parts.length,
-                extractedUuid: extractedUuid
-            }
+            uuidIntegrity: uuidDebug
         }
       });
     }
