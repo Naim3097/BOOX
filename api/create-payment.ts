@@ -116,6 +116,7 @@ export default async function handler(
     };
 
     console.log('Sending payload to Lean.x:', JSON.stringify(leanxPayload, null, 2));
+    console.log(`UUID Debug: Length=${cleanUuid.length}, Value=${cleanUuid}`);
 
     const apiResponse = await fetch('https://api.leanx.dev/api/v1/merchant/create-bill-page', {
       method: 'POST',
