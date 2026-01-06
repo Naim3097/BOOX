@@ -78,7 +78,7 @@ export default function BookingForm() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount: 5.00, // Updated to RM5.00
+          amount: 0.20, // Updated to RM0.20 for testing
           invoiceRef: `BOOKING-${docRef.id}`,
           customerName: data.name,
           customerEmail: data.email || 'guest@onexbooking.com', // Use dummy email if not provided
