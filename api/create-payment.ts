@@ -85,6 +85,7 @@ export default async function handler(
     // Get Lean.x credentials from environment variables
     const authToken = process.env.LEANX_AUTH_TOKEN?.trim();
     const collectionUuid = process.env.LEANX_COLLECTION_UUID?.trim();
+    const headers = process.env.LEANX_API_HOST || 'https://api.leanx.io'; // Default to Production .io
 
     if (!authToken || !collectionUuid) {
       console.error('Missing Lean.x credentials');
@@ -124,7 +125,8 @@ export default async function handler(
 
     console.log('Sending payload to Lean.x:', JSON.stringify(leanxPayload, null, 2));
 
-    const apiResponse = await fetch('https://api.leanx.dev/api/v1/merchant/create-bill-page', {
+    const apiHost = process.env.LEANX_API_HOST || 'https://api.leanx.io';
+    const apiResponse = await fetch(`${apiHost}/api/v1/merchant/create-bill-page`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

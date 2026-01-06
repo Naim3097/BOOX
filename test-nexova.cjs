@@ -1,27 +1,20 @@
 
 const https = require('https');
 
-// CREDENTIALS (ONE X - RETRY)
-const authToken = 'LP-C64B42C3-MM|dc09cd86-6311-4730-8819-55bba6736620|e68bd67be0597380af9a9c5bcad53b36425308575a6e009f78416d46254fbcd5382494c4bdba79af3ebc3f5b206c333efb1d62852abfd04b48b0ad74a53593ca';
-const collectionUuid = 'Dc-E5317E6652-Lx';
-
-const parts = authToken.split('|');
+// NEW CREDENTIALS (NEXOVA SOLUTIONS)
+const authToken = 'LP-D70DAABE-MM|03253b16-7eb7-4244-837e-0ace0343ae5c|c2d2fb521d1a09786cae63de912af1dcaaeb57adb61033f09c893685d499c8d2a904b5622256bb0bca2abf02e5ce671f6c5170a9339c58305739d12ea97a52b4';
+const collectionUuid = 'Dc-94C881BE5B-Lx';
 
 const candidates = [
-    { name: 'Dashboard Bill Form UUID', value: 'CL-8BFBB103CC-LNP' },
-    { name: 'Dashboard Payment Form UUID', value: 'Dc-E5317E6652-Lx' },
-    { name: 'EnvVar (Exact)', value: collectionUuid },
-    { name: 'EnvVar (UpperCase)', value: collectionUuid.toUpperCase() },
-    { name: 'AuthToken (Standard UUID)', value: parts[1] },
-    { name: 'AuthToken (Prefix)', value: parts[0] }
+    { name: 'NEXOVA Collection UUID', value: collectionUuid }
 ];
 
 const payloadTemplate = {
     amount: 5.00,
-    invoice_ref: 'TEST-RETRY-' + Date.now(),
+    invoice_ref: 'TEST-NEXOVA-' + Date.now(),
     redirect_url: 'https://boox.vercel.app/payment/success',
     callback_url: 'https://boox.vercel.app/api/payment-webhook',
-    full_name: 'Test Retry User',
+    full_name: 'Test User',
     email: 'test@example.com',
     phone_number: '0123456789'
 };
@@ -43,7 +36,11 @@ async function testCandidate(candidate) {
         headers: {
             'Content-Type': 'application/json',
             'auth-token': authToken,
-            'Content-Length': data.length
+            'Content-Length': data.length,
+            // SPOOFING PRODUCTION DOMAIN
+            'Origin': 'https://boox.vercel.app',
+            'Referer': 'https://boox.vercel.app/',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
     };
 
@@ -76,12 +73,7 @@ async function testCandidate(candidate) {
 
 async function run() {
     for (const candidate of candidates) {
-        const result = await testCandidate(candidate);
-        if (result && result.response_code === 2000) {
-            console.log('!!! SUCCESS !!!');
-            console.log(`Valid UUID is: ${candidate.value}`);
-            break;
-        }
+        await testCandidate(candidate);
     }
 }
 
