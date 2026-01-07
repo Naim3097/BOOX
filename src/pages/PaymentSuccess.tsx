@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, AlertCircle } from 'lucide-react';
 
 interface TransactionDetails {
   invoiceNo: string;
@@ -15,7 +15,7 @@ export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const invoiceNo = searchParams.get('invoice_no') || searchParams.get('invoiceNo');
-  const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+  const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'cancelled'>('loading');
   const [transaction, setTransaction] = useState<TransactionDetails | null>(null);
   const [errorMessage, setErrorMessage] = useState<string>('');
 
@@ -42,9 +42,12 @@ export default function PaymentSuccess() {
           // Check if payment was successful
           if (data.transaction.status === 'SUCCESS') {
             setStatus('success');
-          } else if (data.transaction.status === 'FAILED' || data.transaction.status === 'CANCELLED') {
+          } else if (data.transaction.status === 'CANCELLED') {
+            setStatus('cancelled');
+            setErrorMessage('You cancelled the payment process.');
+          } else if (data.transaction.status === 'FAILED') {
             setStatus('error');
-            setErrorMessage('Payment was not successful. Please try again.');
+            setErrorMessage('Payment failed or was declined by the bank.');
           } else {
             setStatus('error');
             setErrorMessage('Payment is still pending. Please wait or contact support.');
@@ -75,6 +78,41 @@ export default function PaymentSuccess() {
             <p className="text-gray-500">
               Please wait while we confirm your transaction.
             </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (status === 'cancelled') {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center p-4 font-sans">
+        <div className="max-w-md w-full text-center space-y-6 animate-in fade-in zoom-in duration-500">
+          <div className="w-24 h-24 bg-yellow-100 text-yellow-600 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-yellow-100">
+            <AlertCircle size={48} strokeWidth={3} />
+          </div>
+          
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold text-gray-900">Payment Cancelled</h1>
+            <p className="text-gray-500">
+              {errorMessage}
+            </p>
+          </div>
+
+          <div className="pt-4 space-y-3">
+            <Button 
+              onClick={() => navigate('/booking')} 
+              className="w-full rounded-full py-6 bg-black hover:bg-gray-800 shadow-lg shadow-black/10"
+            >
+              Try Again
+            </Button>
+            <Button 
+              variant="outline"
+              onClick={() => navigate('/')} 
+              className="w-full rounded-full py-6"
+            >
+              Return to Home
+            </Button>
           </div>
         </div>
       </div>
