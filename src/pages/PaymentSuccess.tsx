@@ -145,19 +145,78 @@ export default function PaymentSuccess() {
           </div>
         )}
 
-        <div className="pt-4">
-          <Button 
-            onClick={() => navigate('/')} 
-            className="w-full rounded-full py-6 bg-black hover:bg-gray-800 shadow-lg shadow-black/10"
-          >
-            Return to Home
-          </Button>
+        <div className="pt-4 space-y-3">
+            <Button 
+                onClick={() => window.print()}
+                variant="outline"
+                className="w-full rounded-full py-6"
+            >
+                Download Receipt
+            </Button>
+            <Button 
+                onClick={() => navigate('/')} 
+                className="w-full rounded-full py-6 bg-black hover:bg-gray-800 shadow-lg shadow-black/10"
+            >
+                Return to Home
+            </Button>
         </div>
 
         <p className="text-xs text-gray-400">
           A confirmation email has been sent to your registered email address.
         </p>
       </div>
+
+      {/* Printable Receipt Section - Only verified visible when printing */}
+      {transaction && (
+        <div className="hidden print:block fixed inset-0 bg-white p-8">
+            <div className="max-w-2xl mx-auto border-2 border-gray-900 p-8">
+                <div className="text-center mb-8 border-b-2 border-gray-900 pb-8">
+                    <h1 className="text-3xl font-bold uppercase tracking-wider mb-2">One X Home Booking</h1>
+                    <p className="text-gray-500 text-sm">Official E-Receipt</p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-8 mb-8 text-sm">
+                    <div>
+                        <p className="text-gray-500 font-bold uppercase text-xs mb-1">Billed To</p>
+                        <p className="font-bold">Valued Customer</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-gray-500 font-bold uppercase text-xs mb-1">Invoice Info</p>
+                        <p><span className="text-gray-500">No:</span> {transaction.invoiceNo}</p>
+                        <p><span className="text-gray-500">Date:</span> {new Date().toLocaleDateString()}</p>
+                    </div>
+                </div>
+
+                <div className="mb-8">
+                    <table className="w-full text-sm">
+                        <thead className="border-b-2 border-gray-900 font-bold uppercase">
+                            <tr>
+                                <th className="text-left py-2">Description</th>
+                                <th className="text-right py-2">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td className="py-4">One X Service Booking Deposit</td>
+                                <td className="text-right py-4">RM {transaction.amount.toFixed(2)}</td>
+                            </tr>
+                        </tbody>
+                        <tfoot className="border-t-2 border-gray-900 font-bold text-lg">
+                            <tr>
+                                <td className="py-4">Total Paid</td>
+                                <td className="text-right py-4">RM {transaction.amount.toFixed(2)}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <div className="text-center text-xs text-gray-400 mt-12 pt-8 border-t border-gray-100">
+                    <p>Thank you for choosing One X Home Booking.</p>
+                    <p>This is a computer-generated receipt. No signature required.</p>
+                </div>
+            </div>
+        </div>
+      )}
     </div>
   );
 }

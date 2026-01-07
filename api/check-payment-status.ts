@@ -68,9 +68,11 @@ export default async function handler(
 
     console.log('Checking transaction status for:', invoiceNo);
 
+    const apiHost = process.env.LEANX_API_HOST || 'https://api.leanx.io';
+
     // Call Lean.x API to check transaction status
     const apiResponse = await fetch(
-      `https://api.leanx.dev/api/v1/merchant/manual-checking-transaction?invoice_no=${encodeURIComponent(invoiceNo)}`,
+      `${apiHost}/api/v1/merchant/manual-checking-transaction?invoice_no=${encodeURIComponent(invoiceNo)}`,
       {
         method: 'POST',
         headers: {
