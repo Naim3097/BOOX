@@ -78,7 +78,7 @@ export default function BookingForm() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          amount: 0.20, // Updated to RM0.20 for testing
+          amount: 1.00, // Updated to RM1.00 (Minimum for most FPX/Banks)
           invoiceRef: `BOOKING-${docRef.id}`,
           customerName: data.name,
           customerEmail: data.email || 'guest@onexbooking.com', // Use dummy email if not provided
@@ -313,7 +313,7 @@ export default function BookingForm() {
 
             <div className="bg-yellow-50 p-4 rounded-2xl border border-yellow-100 text-center">
               <p className="text-yellow-800 font-medium text-sm">
-                To confirm booking need to pay <span className="font-bold text-black">RM 0.20</span>
+                To confirm booking need to pay <span className="font-bold text-black">RM 1.00</span>
               </p>
             </div>
 
@@ -328,7 +328,7 @@ export default function BookingForm() {
               <div className="flex gap-3">
                 <Button variant="outline" onClick={prevStep} className="w-1/3 rounded-full py-6 border-gray-200 hover:bg-gray-50" disabled={loading}>Back</Button>
                 <Button className="w-2/3 rounded-full py-6 bg-black hover:bg-gray-800 shadow-lg shadow-black/10" onClick={handleSubmit} disabled={loading}>
-                  {loading ? 'Processing...' : 'Pay RM 0.20'}
+                  {loading ? 'Processing...' : 'Pay RM 1.00'}
                 </Button>
               </div>
             </div>

@@ -1,153 +1,86 @@
 # Lean.x Payment Gateway Integration Guide
 
-## 1. Overview
-This document outlines the integration strategy for the **Lean.x Payment Gateway** into the One X Home Booking system. The integration uses a **Serverless Backend (Vercel Functions)** approach to secure sensitive credentials (API Keys, Hash Keys) and prevent them from being exposed to the client-side.
+This document explains how the **Lean.x Payment Gateway** is integrated into the One X Home Booking platform.
 
-## 2. Architecture
-The integration follows a "Redirect" flow where the user is redirected to a secure Lean.x payment page to complete the transaction.
+## 1. Overview
+The integration follows a standard **Redirect Model**:
+1.  **Frontend:** Collects booking details.
+2.  **Backend (API):** Requests a payment URL from Lean.x.
+3.  **Redirect:** User is sent to the Lean.x payment page (`payment.leanx.io`).
+4.  **Completion:** User pays and is redirected back to our success page.
+
+---
+
+## 2. Configuration (`.env`)
+The system requires 3 environment variables to function. These must be set in **Vercel** (for Production) and your local `.env` file.
+
+| Variable | Description | Value (Production) |
+| :--- | :--- | :--- |
+| `LEANX_API_HOST` | The API Endpoint URL | `https://api.leanx.io` |
+| `LEANX_AUTH_TOKEN` | Your Merchant Secret Token | `LP-C64B42C3...` |
+| `LEANX_COLLECTION_UUID` | ID of the specific collection | `Dc-E5317E6652-Lx` |
+
+> **Context:** Initially, the documentation pointed to `api.leanx.dev`, which caused `INVALID_UUID` errors. We verified that `api.leanx.io` is the correct host for live accounts.
+
+---
+
+## 3. Code Structure
+
+### A. Backend: `api/create-payment.ts`
+This is a Serverless Function that acts as the secure bridge between our app and Lean.x.
+
+**What it does:**
+1.  Receives customer details (Name, Email, Amount) from the Frontend.
+2.  Validates the input (checks for valid email, phone, positive amount).
+3.  Constructs the payload:
+    *   **`redirect_url`**: Dynamic URL based on current host (`https://boox.vercel.app/payment/success`).
+    *   **`callback_url`**: Where Lean.x sends the receipt (`/api/payment-webhook`).
+4.  Sends a `POST` request to `${LEANX_API_HOST}/api/v1/merchant/create-bill-page`.
+5.  Returns the `redirect_url` to the frontend.
+
+### B. Frontend: `src/components/booking/BookingForm.tsx`
+Handles the user interaction.
+
+**Flow:**
+1.  User clicks "Pay & Book".
+2.  Calls `/api/create-payment`.
+3.  Receives the `redirectUrl` from the backend.
+4.  Executes `window.location.href = data.redirectUrl` to send the user to Lean.x.
+
+---
+
+## 4. Payment Flow Diagram
 
 ```mermaid
 sequenceDiagram
     participant User
     participant Frontend (React)
     participant Backend (Vercel API)
-    participant LeanX (Gateway)
+    participant LeanX (Payment Gateway)
 
-    User->>Frontend: Clicks "Pay Now"
-    Frontend->>Backend: POST /api/create-payment (Booking Details)
-    Backend->>LeanX: POST /create-bill-page (Auth Token + Details)
-    LeanX-->>Backend: Returns { redirect_url, bill_no }
-    Backend-->>Frontend: Returns { redirect_url }
-    Frontend->>User: Redirects to Lean.x Payment Page
-    User->>LeanX: Completes Payment
-    LeanX->>User: Redirects to Success Page (Frontend)
-    LeanX->>Backend: Webhook (Callback) with Status
+    User->>Frontend: Fills Booking Form & Clicks Pay
+    Frontend->>Backend: POST /api/create-payment (Amount, User Info)
+    Note over Backend: Validates input & reads ENV keys
+    Backend->>LeanX: POST /create-bill-page
+    LeanX-->>Backend: Returns generic { redirect_url: "..." }
+    Backend-->>Frontend: Returns { success: true, redirectUrl: "..." }
+    Frontend->>User: Redirects to Payment Page
+    User->>LeanX: Enters Card Details & Pays
+    LeanX->>User: Redirects to /payment/success
 ```
 
-## 3. Credentials & Configuration
-**Important:** Never commit actual keys to GitHub. Use Environment Variables.
+---
 
-| Variable Name | Description | Source |
-|--------------|-------------|--------|
-| `LEANX_AUTH_TOKEN` | The main authentication token for API requests. | `Lean.x API.txt` |
-| `LEANX_COLLECTION_UUID` | Unique ID for the merchant collection. | `Lean.x API.txt` |
-| `LEANX_HASH_KEY` | Key used for signature generation (if required later). | `Lean.x API.txt` |
-| `LEANX_API_URL` | Base URL for the API. | `https://api.leanx.dev/api/v1` |
+## 5. Troubleshooting
 
-## 4. API Endpoints Implementation
+### `INVALID_UUID` Error / Code 5699
+*   **Cause:** Mismatch between the API Host and the Credentials.
+*   **Fix:** Ensure you are using `api.leanx.io` (Production) with the One X credentials. `api.leanx.dev` is invalid for these keys.
 
-### A. Create Payment Page (The "Checkout" Action)
-*   **Endpoint:** `/merchant/create-bill-page`
-*   **Method:** `POST`
-*   **Purpose:** Generates the payment link.
-*   **Required Headers:**
-    *   `auth-token`: `process.env.LEANX_AUTH_TOKEN`
-*   **Required Body:**
-    ```json
-    {
-      "collection_uuid": "process.env.LEANX_COLLECTION_UUID",
-      "amount": 150.00,
-      "invoice_ref": "BOOKING-123",
-      "redirect_url": "https://your-app.vercel.app/payment/success",
-      "callback_url": "https://your-app.vercel.app/api/payment-webhook",
-      "full_name": "Customer Name",
-      "email": "customer@email.com",
-      "phone_number": "0123456789"
-    }
-    ```
+### Payment Page Shows Wrong Amount
+*   **Cause:** The amount is sent dynamically from the code.
+*   **Fix:** Check `api/create-payment.ts` or `src/components/booking/BookingForm.tsx` to verify the `amount` value being sent. (Currently set to `0.20` for testing).
 
-### B. List Payment Services (Optional - for displaying bank icons)
-*   **Endpoint:** `/merchant/list-payment-services`
-*   **Method:** `POST`
-*   **Body:**
-    ```json
-    {
-      "payment_type": "WEB_PAYMENT",
-      "payment_status": "active",
-      "payment_model_reference_id": 1
-    }
-    ```
-
-### C. Check Transaction Status (Verification)
-*   **Endpoint:** `/merchant/manual-checking-transaction`
-*   **Method:** `POST`
-*   **Query Param:** `?invoice_no=BOOKING-123`
-
-## 5. Implementation Steps
-
-### Step 1: Environment Setup (CRITICAL)
-
-#### A. Local Development (.env file)
-Your `.env` file should already have these added:
-```env
-LEANX_AUTH_TOKEN=LP-C64B42C3-MM|dc09cd86-6311-4730-8819-55bba6736620|e68bd67be0597380af9a9c5bcad53b36425308575a6e009f78416d46254fbcd5382494c4bdba79af3ebc3f5b206c333efb1d62852abfd04b48b0ad74a53593ca
-LEANX_COLLECTION_UUID=Dc-E5317E6652-Lx
-LEANX_HASH_KEY=e68bd67be0597380af9a9c5bcad53b36425308575a6e009f78416d46254fbcd5382494c4bdba79af3ebc3f5b206c333efb1d62852abfd04b48b0ad74a53593ca
-```
-
-#### B. Production (Vercel Dashboard)
-**IMPORTANT:** You must add these to Vercel Environment Variables:
-
-1. Go to your Vercel project dashboard
-2. Navigate to **Settings** → **Environment Variables**
-3. Add each variable:
-   - `LEANX_AUTH_TOKEN` = (paste the full token)
-   - `LEANX_COLLECTION_UUID` = `Dc-E5317E6652-Lx`
-   - `LEANX_HASH_KEY` = (paste the full hash key)
-
-4. **For Firebase Admin (Webhook)**, also add:
-   - `FIREBASE_ADMIN_PRIVATE_KEY` = (Get from Firebase Console → Project Settings → Service Accounts → Generate New Private Key)
-   - `FIREBASE_ADMIN_CLIENT_EMAIL` = (From the same JSON file)
-
-5. Set scope to **All** (Production, Preview, Development)
-6. Click **Save**
-7. **Redeploy** your application for changes to take effect
-
-### Step 2: Backend APIs (✅ Already Created)
-The following API routes are ready:
-- `api/create-payment.ts` - Creates Lean.x payment session
-- `api/payment-webhook.ts` - Receives payment confirmation from Lean.x
-- `api/check-payment-status.ts` - Manually checks transaction status
-
-### Step 3: Frontend Integration (✅ Already Implemented)
-- `BookingForm.tsx` - Integrated with `/api/create-payment`
-- `PaymentSuccess.tsx` - Verifies payment and shows status
-
-### Step 4: Testing the Flow
-
-#### A. Test Locally (Development)
-1. Run `npm run dev`
-2. Create a booking
-3. **Important:** Lean.x will redirect to `localhost:5173/payment/success`
-4. Check the webhook logs (you may need to use ngrok or similar for local webhook testing)
-
-#### B. Test on Production
-1. Deploy to Vercel: `git push`
-2. Create a test booking on your live site
-3. Complete payment on Lean.x page
-4. Verify redirect works to `your-domain.vercel.app/payment/success`
-5. Check Firestore to confirm booking status updated to `confirmed`
-
-## 6. Security Checklist
-- [x] **Never** expose `LEANX_AUTH_TOKEN` in React code (it's only in server-side API routes)
-- [x] Always validate the `amount` on the server side (done in `create-payment.ts`)
-- [x] Use HTTPS for all callback URLs (Vercel provides this automatically)
-- [ ] Add Firebase Admin credentials to Vercel (Required for webhook)
-- [ ] Test the complete payment flow end-to-end
-
-## 7. Troubleshooting
-
-### Issue: Payment redirects but webhook doesn't update Firestore
-**Solution:** Ensure Firebase Admin credentials are set in Vercel Environment Variables.
-
-### Issue: "Payment gateway not configured" error
-**Solution:** Check that `LEANX_AUTH_TOKEN` and `LEANX_COLLECTION_UUID` are set in Vercel.
-
-### Issue: Cannot verify payment on success page
-**Solution:** The Lean.x redirect URL should include the `invoice_no` query parameter. Check their documentation or test the actual redirect.
-
-## 8. Next Steps (Optional Enhancements)
-- [ ] Add email notifications on successful payment
-- [ ] Implement payment retry logic for failed transactions
-- [ ] Add admin panel view for payment history
-- [ ] Create automated refund system
+### `ENOTFOUND` Error
+*   **Cause:** The API Host URL is typed incorrectly.
+*   **Fix:** Check `LEANX_API_HOST` in `.env`.
