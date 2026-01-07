@@ -28,4 +28,13 @@ If available, try to consolidate. For example:
 *   Disable the others if Razer covers what you need.
 *   *OR* Use **PayNet** for FPX/DuitNow and disable the rest.
 
+## Troubleshooting: "Missing" Payment Methods
+If you accidentally disabled too many providers and now (like DuitNow or E-Wallet) are missing:
+
+1.  Go back to the **Payment Channels** list.
+2.  Look for "Razer Merchant Services (QR)" or "PayNet DuitNow".
+3.  **Toggle it back ON.**
+4.  Ensure at least **one** provider is active for every channel (FPX, QR, Card, Wallet) you want to offer.
+
+
 Once you toggle these off in the dashboard, refresh your app and try the "Pay" button again. The Payment Page will immediately show only the allowed buttons.
