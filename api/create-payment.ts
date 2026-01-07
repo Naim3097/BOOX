@@ -108,7 +108,8 @@ export default async function handler(
     const protocol = request.headers['x-forwarded-proto'] || 'https';
     const host = request.headers.host;
     const baseUrl = `${protocol}://${host}`;
-    const redirectUrl = `${baseUrl}/payment/success`;
+    // FIX: Explicitly append invoiceNo to the redirect URL so we don't rely on Lean.x appending it
+    const redirectUrl = `${baseUrl}/payment/success?invoiceNo=${invoiceRef}`;
     const callbackUrl = `${baseUrl}/api/payment-webhook`;
 
     // Prepare request body for Lean.x API
