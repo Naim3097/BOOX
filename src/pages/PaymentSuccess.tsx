@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { CheckCircle, XCircle, Loader2, AlertCircle } from 'lucide-react';
+import logo from '../assets/logo.png';
 
 interface TransactionDetails {
   invoiceNo: string;
@@ -208,7 +209,8 @@ export default function PaymentSuccess() {
       {transaction && (
         <div className="hidden print:block fixed inset-0 bg-white p-8">
             <div className="max-w-2xl mx-auto border-2 border-gray-900 p-8">
-                <div className="text-center mb-8 border-b-2 border-gray-900 pb-8">
+                <div className="text-center mb-8 border-b-2 border-gray-900 pb-8 flex flex-col items-center">
+                    <img src={logo} alt="One X Logo" className="h-16 mb-4 object-contain" />
                     <h1 className="text-3xl font-bold uppercase tracking-wider mb-2">One X Home Booking</h1>
                     <p className="text-gray-500 text-sm">Official E-Receipt</p>
                 </div>
